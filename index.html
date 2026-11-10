@@ -2,19 +2,104 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>(주)전우정밀 공장동 전체 3D 관제</title>
+  <title>전우정밀 - HIM 650T 동기화 라인 3D 디지털 트윈</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #0b0d13; font-family: sans-serif; }
-    #canvas-container { width: 100vw; height: 100vh; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #0b0d13;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
     #control-panel {
-      position: absolute; top: 16px; left: 16px;
-      background: rgba(18, 22, 32, 0.94); border: 1px solid #334155;
-      border-radius: 8px; padding: 16px 20px; color: #f1f5f9; min-width: 320px;
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(18, 22, 32, 0.94);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px 20px;
+      color: #f1f5f9;
+      min-width: 330px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
       z-index: 100;
     }
-    .btn { width: 100%; padding: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; background: #334155; color: #fff; margin-top: 8px; }
-    .btn:hover { background: #0284c7; }
+    .panel-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #38bdf8;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .badge-run { background: #16a34a; color: #fff; }
+    .badge-stop { background: #dc2626; color: #fff; }
+    .btn {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 8px;
+      background-color: #334155;
+      color: #f1f5f9;
+      transition: 0.2s;
+    }
+    .btn:hover { background-color: #0284c7; }
+    .view-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .view-btn {
+      padding: 6px 4px;
+      font-size: 11px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .view-btn:hover {
+      background: #0284c7;
+      color: #fff;
+    }
+    .legend-box {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #1e293b;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .legend-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
   </style>
+
   <script type="importmap">
     {
       "imports": {
@@ -25,14 +110,1218 @@
   </script>
 </head>
 <body>
+
   <div id="canvas-container"></div>
+
   <div id="control-panel">
-    <h3 style="margin: 0 0 10px 0; color: #38bdf8;">공장동 전체 맵 관제</h3>
-    <div id="status-text">설비 정상 가동 중</div>
+    <div class="panel-title">(주)전우정밀 650T 동기화 라인 3D</div>
+    <div class="status-row">
+      <span>트랜스퍼 라인:</span>
+      <span id="transfer-status" class="badge badge-run">650T 6대 동기 가동</span>
+    </div>
+    <div class="status-row">
+      <span>디스테커 조작반:</span>
+      <span style="color: #38bdf8; font-weight: bold;">취출부/작업자 대면 화면 정렬 완료</span>
+    </div>
+    <div class="status-row">
+      <span>물류 순환:</span>
+      <span style="color: #facc15; font-weight: bold;">400T 푸셔 & 650T 리프터</span>
+    </div>
+
+    <div class="view-btns">
+      <button class="view-btn" id="btn-view-all">전경 전체 뷰</button>
+      <button class="view-btn" id="btn-view-feeder">조작반 화면 줌</button>
+      <button class="view-btn" id="btn-view-forklift">지게차 후진 줌</button>
+    </div>
+
     <button id="toggle-btn" class="btn">전 라인 일시정지</button>
+
+    <div class="legend-box">
+      <div><span class="legend-dot" style="background: #38bdf8;"></span><b>조작 판넬:</b> 주황 컨베이어 및 작업자 정면 대면</div>
+      <div><span class="legend-dot" style="background: #e65100;"></span><b>400T 쪽:</b> 횡방향 유압 실린더 푸셔 기구</div>
+      <div><span class="legend-dot" style="background: #facc15;"></span><b>650T 쪽:</b> 수직 승하강 엘리베이터 리프터</div>
+      <div><span class="legend-dot" style="background: #f97316;"></span><b>지게차:</b> 안전 경광등 점멸 & 180° 반전 후진</div>
+    </div>
   </div>
 
-  <!-- 분할된 메인 스크립트 실행 -->
-  <script type="module" src="./src/main.js"></script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // 1. Scene, Camera, Renderer
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0c12);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 600);
+    camera.position.set(22, 26, 44);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(2, 2.5, 0);
+
+    // 2. 조명 & 에폭시 바닥
+    scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(20, 50, 30);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 70),
+      new THREE.MeshStandardMaterial({ color: 0x133625, roughness: 0.28, metalness: 0.1 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(90, 45, 0x38bdf8, 0x1e3a2f);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // 3. 재질 정의
+    const himWhiteMat = new THREE.MeshStandardMaterial({ color: 0xeef1f4, roughness: 0.35, metalness: 0.15 });
+    const press400TBodyMat = new THREE.MeshStandardMaterial({ 
+      color: 0xeef1f4, 
+      roughness: 0.35, 
+      metalness: 0.15, 
+      transparent: true, 
+      opacity: 1.0, 
+      depthWrite: true 
+    });
+
+    const orangeDieMat = new THREE.MeshStandardMaterial({ color: 0xf97316, metalness: 0.35, roughness: 0.25 });
+    const chromeRodMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.12 });
+    const bolsterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.4 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+    const machinedSteelMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.9, roughness: 0.22 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.7 });
+    const yellowConveyorMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 });
+    const orangeRailMat = new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.4 });
+    const ktmArmMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.35 });
+    const btnGreenMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.3 });
+    const btnRedMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+    const screenGlowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+    const palletBlueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.35 });
+    const forkliftYellowMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.3, roughness: 0.35 });
+    const forkliftTireMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+    
+    const beaconGlassMat = new THREE.MeshStandardMaterial({ 
+      color: 0xf97316, 
+      emissive: 0xf97316, 
+      emissiveIntensity: 0.8, 
+      transparent: true, 
+      opacity: 0.85 
+    });
+
+    // 안전 줄무늬 텍스처
+    function createHazardStripeTexture() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 512; cvs.height = 64;
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#facc15'; ctx.fillRect(0, 0, 512, 64);
+      ctx.fillStyle = '#111827';
+      const stripeW = 40;
+      for (let x = -64; x < 512 + 64; x += stripeW * 2) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0); ctx.lineTo(x + stripeW, 0);
+        ctx.lineTo(x + stripeW - 32, 64); ctx.lineTo(x - 32, 64);
+        ctx.closePath(); ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+    const hazardStripeMat = new THREE.MeshBasicMaterial({ map: createHazardStripeTexture() });
+
+    // 코일 나이테 텍스처
+    function createCoilRingsTexture() {
+      const cvs = document.createElement('canvas');
+      cvs.width = 1024; cvs.height = 1024;
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#b0b8c4'; ctx.fillRect(0, 0, 1024, 1024);
+      const cx = 512, cy = 512;
+      const innerR = 170, outerR = 490;
+
+      for (let r = innerR; r <= outerR; r += 5) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = (r % 10 === 0) ? '#475569' : '#e2e8f0';
+        ctx.lineWidth = (r % 15 === 0) ? 2.5 : 1.2;
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#334155'; ctx.lineWidth = 4;
+      for (let i = 0; i < 4; i++) {
+        const rad = (i * Math.PI) / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(rad) * (innerR + 10), cy + Math.sin(rad) * (innerR + 10));
+        ctx.lineTo(cx + Math.cos(rad) * (outerR - 10), cy + Math.sin(rad) * (outerR - 10));
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a'; ctx.fill();
+      ctx.lineWidth = 8; ctx.strokeStyle = '#f59e0b'; ctx.stroke();
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.wrapS = THREE.ClampToEdgeWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      return tex;
+    }
+    const coilCapMat = new THREE.MeshStandardMaterial({ map: createCoilRingsTexture(), metalness: 0.9, roughness: 0.25 });
+    const coilOuterMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.95, roughness: 0.2 });
+
+    // HIM 양각 로고
+    function createHimEmbossedTexture(tonText) {
+      const cvs = document.createElement('canvas');
+      cvs.width = 512; cvs.height = 256;
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      ctx.fillStyle = '#0284c7'; ctx.font = 'bold 88px "Arial Black", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('HIM', 256, 95);
+      ctx.fillStyle = '#334155'; ctx.font = 'bold 30px "Arial", sans-serif'; ctx.letterSpacing = '4px';
+      ctx.fillText('HWAIL PLUS', 256, 145);
+      ctx.fillStyle = '#0284c7'; ctx.font = 'bold 34px "Arial Black", sans-serif'; ctx.letterSpacing = '2px';
+      ctx.fillText(tonText, 256, 195);
+      return new THREE.CanvasTexture(cvs);
+    }
+    const him650TLogoMat = new THREE.MeshBasicMaterial({ map: createHimEmbossedTexture('HKLP-650'), transparent: true });
+    const him400TLogoMat = new THREE.MeshBasicMaterial({ map: createHimEmbossedTexture('HKLP-400'), transparent: true });
+
+    // 각도계
+    function createGauge() {
+      const gGroup = new THREE.Group();
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.04), new THREE.MeshStandardMaterial({ color: 0xdce2ea }));
+      gGroup.add(plate);
+
+      const dCvs = document.createElement('canvas');
+      dCvs.width = 256; dCvs.height = 256;
+      const dctx = dCvs.getContext('2d');
+      dctx.fillStyle = '#0f172a'; dctx.beginPath(); dctx.arc(128, 128, 120, 0, Math.PI * 2); dctx.fill();
+      dctx.strokeStyle = '#94a3b8'; dctx.lineWidth = 4;
+      for (let a = 0; a < 360; a += 30) {
+        const rad = (a * Math.PI) / 180;
+        dctx.beginPath();
+        dctx.moveTo(128 + Math.cos(rad) * 95, 128 + Math.sin(rad) * 95);
+        dctx.lineTo(128 + Math.cos(rad) * 115, 128 + Math.sin(rad) * 115);
+        dctx.stroke();
+      }
+      dctx.fillStyle = '#38bdf8'; dctx.font = 'bold 24px sans-serif'; dctx.textAlign = 'center';
+      dctx.fillText('HIM', 128, 180);
+
+      const dialMesh = new THREE.Mesh(new THREE.CircleGeometry(0.26, 32), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(dCvs) }));
+      dialMesh.position.z = 0.025;
+      gGroup.add(dialMesh);
+
+      const needlePivot = new THREE.Group();
+      needlePivot.position.z = 0.03;
+      const nGeo = new THREE.BoxGeometry(0.02, 0.22, 0.01);
+      nGeo.translate(0, 0.1, 0);
+      needlePivot.add(new THREE.Mesh(nGeo, new THREE.MeshBasicMaterial({ color: 0xef4444 })));
+      gGroup.add(needlePivot);
+
+      return { gGroup, needlePivot };
+    }
+
+    // 양수버튼 스탠드
+    function createTwoHandStation(x, z) {
+      const g = new THREE.Group();
+      g.position.set(x, 0, z);
+
+      const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.95, 16), darkMat);
+      standPole.position.y = 0.475;
+      g.add(standPole);
+
+      const standBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16), darkMat);
+      standBase.position.y = 0.02;
+      g.add(standBase);
+
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.12, 0.28), himWhiteMat);
+      box.position.set(0, 0.95, 0);
+      box.rotation.x = -Math.PI / 8;
+      g.add(box);
+
+      const btnGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.03, 16);
+      const btnL = new THREE.Mesh(btnGeo, btnGreenMat);
+      btnL.position.set(-0.22, 1.02, 0.02);
+      const btnR = new THREE.Mesh(btnGeo, btnGreenMat);
+      btnR.position.set(0.22, 1.02, 0.02);
+      g.add(btnL, btnR);
+
+      const eStop = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 16), btnRedMat);
+      eStop.position.set(0, 1.03, 0.02);
+      g.add(eStop);
+
+      scene.add(g);
+      return g;
+    }
+
+    // 터치 조작반 팩토리
+    function createTouchControlConsole(x, z, rotY, titleText = 'OP PANEL') {
+      const g = new THREE.Group();
+      g.position.set(x, 0, z);
+      g.rotation.y = rotY;
+
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.45), himWhiteMat);
+      cab.position.y = 0.55;
+      cab.castShadow = true;
+      g.add(cab);
+
+      const mH = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.12), darkMat);
+      mH.position.set(0, 1.25, 0.1);
+      mH.rotation.x = -Math.PI / 6;
+      g.add(mH);
+
+      const lcd = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.34), screenGlowMat);
+      lcd.position.set(0, 1.26, 0.165);
+      lcd.rotation.x = -Math.PI / 6;
+      g.add(lcd);
+
+      const towerRod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 16), steelMat);
+      towerRod.position.set(0.32, 1.45, -0.1);
+      g.add(towerRod);
+
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 16), btnGreenMat);
+      lamp.position.set(0.32, 1.62, -0.1);
+      g.add(lamp);
+
+      scene.add(g);
+      return g;
+    }
+
+    // 브레이크 허브 디스크
+    function createBrakeHubDiscMesh() {
+      const hubGroup = new THREE.Group();
+
+      const flangeGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.06, 36);
+      const flange = new THREE.Mesh(flangeGeo, machinedSteelMat);
+      flange.position.y = 0.03;
+      flange.castShadow = true;
+      hubGroup.add(flange);
+
+      const bossGeo = new THREE.CylinderGeometry(0.26, 0.28, 0.22, 36);
+      const boss = new THREE.Mesh(bossGeo, machinedSteelMat);
+      boss.position.y = 0.06 + 0.11;
+      boss.castShadow = true;
+      hubGroup.add(boss);
+
+      const topRimGeo = new THREE.CylinderGeometry(0.24, 0.25, 0.03, 36);
+      const topRim = new THREE.Mesh(topRimGeo, steelMat);
+      topRim.position.y = 0.28 + 0.015;
+      hubGroup.add(topRim);
+
+      const holeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.32, 24), darkMat);
+      holeMesh.position.y = 0.16;
+      hubGroup.add(holeMesh);
+
+      const boltHoleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.02, 12);
+      for (let b = 0; b < 8; b++) {
+        const theta = (b * Math.PI * 2) / 8;
+        const bHole = new THREE.Mesh(boltHoleGeo, darkMat);
+        bHole.position.set(Math.cos(theta) * 0.19, 0.296, Math.sin(theta) * 0.19);
+        hubGroup.add(bHole);
+      }
+
+      return hubGroup;
+    }
+
+    // 블루 메쉬 스틸 파레트
+    function createBlueMeshPallet() {
+      const pGroup = new THREE.Group();
+      const pW = 1.4, pH = 1.1, pD = 1.3;
+      const pipeT = 0.06;
+
+      for (let x of [-pW / 2 + pipeT / 2, pW / 2 - pipeT / 2]) {
+        for (let z of [-pD / 2 + pipeT / 2, pD / 2 - pipeT / 2]) {
+          const post = new THREE.Mesh(new THREE.BoxGeometry(pipeT, pH, pipeT), palletBlueMat);
+          post.position.set(x, pH / 2, z);
+          post.castShadow = true;
+          pGroup.add(post);
+
+          const tip = new THREE.Mesh(new THREE.BoxGeometry(pipeT * 1.3, 0.08, pipeT * 1.3), palletBlueMat);
+          tip.position.set(x, pH + 0.04, z);
+          pGroup.add(tip);
+
+          const foot = new THREE.Mesh(new THREE.BoxGeometry(pipeT * 1.4, 0.08, pipeT * 1.4), palletBlueMat);
+          foot.position.set(x, 0.04, z);
+          pGroup.add(foot);
+        }
+      }
+
+      const bottomFloor = new THREE.Mesh(new THREE.BoxGeometry(pW, 0.04, pD), palletBlueMat);
+      bottomFloor.position.y = 0.1;
+      pGroup.add(bottomFloor);
+
+      const topRimX = new THREE.Mesh(new THREE.BoxGeometry(pW, pipeT, pipeT), palletBlueMat);
+      topRimX.position.set(0, pH - pipeT / 2, pD / 2 - pipeT / 2);
+      const topRimX2 = topRimX.clone();
+      topRimX2.position.z = -pD / 2 + pipeT / 2;
+      pGroup.add(topRimX, topRimX2);
+
+      const topRimZ = new THREE.Mesh(new THREE.BoxGeometry(pipeT, pipeT, pD), palletBlueMat);
+      topRimZ.position.set(pW / 2 - pipeT / 2, pH - pipeT / 2, 0);
+      const topRimZ2 = topRimZ.clone();
+      topRimZ2.position.x = -pW / 2 + pipeT / 2;
+      pGroup.add(topRimZ, topRimZ2);
+
+      const meshMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, wireframe: true, roughness: 0.5 });
+
+      const sideMeshGeoZ = new THREE.PlaneGeometry(pD - pipeT * 2, pH - 0.2, 10, 8);
+      const sideMeshL = new THREE.Mesh(sideMeshGeoZ, meshMat);
+      sideMeshL.rotation.y = Math.PI / 2;
+      sideMeshL.position.set(-pW / 2 + pipeT / 2, pH / 2 + 0.05, 0);
+      const sideMeshR = sideMeshL.clone();
+      sideMeshR.position.x = pW / 2 - pipeT / 2;
+      pGroup.add(sideMeshL, sideMeshR);
+
+      const sideMeshGeoX = new THREE.PlaneGeometry(pW - pipeT * 2, pH - 0.2, 10, 8);
+      const sideMeshF = new THREE.Mesh(sideMeshGeoX, meshMat);
+      sideMeshF.position.set(0, pH / 2 + 0.05, pD / 2 - pipeT / 2);
+      const sideMeshB = sideMeshF.clone();
+      sideMeshB.position.z = -pD / 2 + pipeT / 2;
+      pGroup.add(sideMeshF, sideMeshB);
+
+      return pGroup;
+    }
+
+    // 지게차 팩토리
+    let flBeaconLight;
+    function createForkliftUnit() {
+      const flGroup = new THREE.Group();
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 2.2), forkliftYellowMat);
+      body.position.set(0, 0.65, 0);
+      body.castShadow = true;
+      flGroup.add(body);
+
+      const cWeight = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.7, 0.6), darkMat);
+      cWeight.position.set(0, 0.7, 1.0);
+      flGroup.add(cWeight);
+
+      const tireGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.25, 24);
+      for (let tx of [-0.85, 0.85]) {
+        for (let tz of [-0.8, 0.8]) {
+          const wheel = new THREE.Mesh(tireGeo, forkliftTireMat);
+          wheel.rotation.z = Math.PI / 2;
+          wheel.position.set(tx, 0.32, tz);
+          flGroup.add(wheel);
+        }
+      }
+
+      const mastPillarGeo = new THREE.BoxGeometry(0.1, 2.2, 0.12);
+      const mastL = new THREE.Mesh(mastPillarGeo, darkMat);
+      mastL.position.set(-0.55, 1.3, -1.15);
+      const mastR = new THREE.Mesh(mastPillarGeo, darkMat);
+      mastR.position.set(0.55, 1.3, -1.15);
+      flGroup.add(mastL, mastR);
+
+      const forkCarriage = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.08), darkMat);
+      forkCarriage.position.set(0, 0.5, -1.22);
+      flGroup.add(forkCarriage);
+
+      for (let fx of [-0.35, 0.35]) {
+        const forkBlade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 1.3), steelMat);
+        forkBlade.position.set(fx, 0.22, -1.8);
+        flGroup.add(forkBlade);
+      }
+
+      const guardPostGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.4, 16);
+      for (let gx of [-0.65, 0.65]) {
+        for (let gz of [-0.5, 0.6]) {
+          const gPost = new THREE.Mesh(guardPostGeo, darkMat);
+          gPost.position.set(gx, 1.6, gz);
+          flGroup.add(gPost);
+        }
+      }
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 1.3), darkMat);
+      roof.position.set(0, 2.3, 0.05);
+      flGroup.add(roof);
+
+      const beaconBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.05, 16), darkMat);
+      beaconBase.position.set(0, 2.36, 0.05);
+      flGroup.add(beaconBase);
+
+      const beaconGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.14, 16), beaconGlassMat);
+      beaconGlass.position.set(0, 2.45, 0.05);
+      flGroup.add(beaconGlass);
+
+      flBeaconLight = new THREE.PointLight(0xf97316, 2.5, 8);
+      flBeaconLight.position.set(0, 2.5, 0.05);
+      flGroup.add(flBeaconLight);
+
+      const driverGroup = new THREE.Group();
+      driverGroup.position.set(0, 0.9, 0.05);
+
+      const dTorso = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.26), new THREE.MeshStandardMaterial({ color: 0x1e3a8a }));
+      dTorso.position.y = 0.55;
+      driverGroup.add(dTorso);
+
+      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffd1b3 }));
+      dHead.position.y = 0.95;
+      driverGroup.add(dHead);
+
+      const dCap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.07, 16), yellowConveyorMat);
+      dCap.position.y = 1.06;
+      driverGroup.add(dCap);
+
+      const steer = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 12, 24), darkMat);
+      steer.rotation.x = Math.PI / 4;
+      steer.position.set(0, 0.75, -0.35);
+      driverGroup.add(steer);
+
+      flGroup.add(driverGroup);
+
+      return flGroup;
+    }
+
+    // 상단 '동기화 라인' 배지
+    function createFloatingSyncBanner() {
+      const bCvs = document.createElement('canvas');
+      bCvs.width = 2048; bCvs.height = 360;
+      const ctx = bCvs.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 2048, 0);
+      grad.addColorStop(0, 'rgba(14, 165, 233, 0.9)');
+      grad.addColorStop(0.5, 'rgba(15, 23, 42, 0.95)');
+      grad.addColorStop(1, 'rgba(14, 165, 233, 0.9)');
+      ctx.fillStyle = grad;
+
+      ctx.beginPath();
+      ctx.roundRect(30, 25, 1988, 310, 40);
+      ctx.fill();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 100px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('● 동기화 라인 (SYNCHRONIZED LINE)', 1024, 150);
+
+      ctx.fillStyle = '#7dd3fc';
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.letterSpacing = '3px';
+      ctx.fillText('HIM 650T 6대 트랜스퍼 라인  |  전면 400T 연속 코일 블랭킹 시스템', 1024, 250);
+
+      const spriteMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(bCvs), transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.set(0, 14.2, -0.5);
+      sprite.scale.set(22, 3.86, 1);
+      scene.add(sprite);
+    }
+    createFloatingSyncBanner();
+
+    // HIM 프레스 빌더
+    function buildHimPressUnit({ xPos, zPos, width, height, depth, windowH, stroke, tonText = 'HKLP-650', is400T = false }) {
+      const group = new THREE.Group();
+      group.position.set(xPos, 0, zPos);
+
+      const halfW = width / 2;
+      const winW = width * 0.68;
+      const winBottom = height * 0.22;
+      const winTop = winBottom + windowH;
+      const colW = (width - winW) / 2;
+
+      const bodyMatToUse = is400T ? press400TBodyMat : himWhiteMat;
+      const logoMatToUse = is400T ? him400TLogoMat : him650TLogoMat;
+
+      const base = new THREE.Mesh(new THREE.BoxGeometry(width, winBottom, depth), bodyMatToUse);
+      base.position.y = winBottom / 2;
+      base.castShadow = true;
+      group.add(base);
+
+      const bolster = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.98, 0.22, depth * 0.8), bolsterMat);
+      bolster.position.y = winBottom + 0.11;
+      bolster.castShadow = true;
+      group.add(bolster);
+
+      const lowerDie = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.92, 0.36, depth * 0.72), orangeDieMat);
+      lowerDie.position.y = winBottom + 0.22 + 0.18;
+      lowerDie.castShadow = true;
+      group.add(lowerDie);
+
+      const colGeo = new THREE.BoxGeometry(colW, windowH, depth);
+      const leftCol = new THREE.Mesh(colGeo, bodyMatToUse);
+      leftCol.position.set(-halfW + colW / 2, winBottom + windowH / 2, 0);
+      const rightCol = new THREE.Mesh(colGeo, bodyMatToUse);
+      rightCol.position.set(halfW - colW / 2, winBottom + windowH / 2, 0);
+      group.add(leftCol, rightCol);
+
+      const gibGeo = new THREE.BoxGeometry(0.08, windowH * 0.95, depth * 0.55);
+      const leftGib = new THREE.Mesh(gibGeo, steelMat);
+      leftGib.position.set(-winW / 2 + 0.04, winBottom + windowH / 2, 0);
+      const rightGib = new THREE.Mesh(gibGeo, steelMat);
+      rightGib.position.set(winW / 2 - 0.04, winBottom + windowH / 2, 0);
+      group.add(leftGib, rightGib);
+
+      const crownH = height - winTop;
+      const crown = new THREE.Mesh(new THREE.BoxGeometry(width, crownH, depth), bodyMatToUse);
+      crown.position.y = winTop + crownH / 2;
+      crown.castShadow = true;
+      group.add(crown);
+
+      const logoPlate = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), logoMatToUse);
+      logoPlate.position.set(0, winTop + crownH * 0.62, depth / 2 + 0.02);
+      group.add(logoPlate);
+
+      const { gGroup, needlePivot } = createGauge();
+      gGroup.position.set(0, winTop + crownH * 0.25, depth / 2 + 0.02);
+      group.add(gGroup);
+
+      const slideAssembly = new THREE.Group();
+      const ramH = windowH * 0.5;
+      const ramW = winW * 0.94;
+      const ramD = depth * 0.75;
+      
+      const slideRam = new THREE.Mesh(new THREE.BoxGeometry(ramW, ramH, ramD), bodyMatToUse);
+      slideRam.position.y = ramH / 2;
+      slideRam.castShadow = true;
+      slideAssembly.add(slideRam);
+
+      const stripeBar = new THREE.Mesh(new THREE.BoxGeometry(ramW + 0.04, 0.12, ramD + 0.04), hazardStripeMat);
+      stripeBar.position.y = 0.06;
+      slideAssembly.add(stripeBar);
+
+      const upperDieH = 0.36;
+      const upperDie = new THREE.Mesh(new THREE.BoxGeometry(ramW * 0.92, upperDieH, ramD * 0.9), orangeDieMat);
+      upperDie.position.y = -upperDieH / 2;
+      upperDie.castShadow = true;
+      slideAssembly.add(upperDie);
+
+      const punchGeo = new THREE.BoxGeometry(ramW * 0.75, 0.1, ramD * 0.7);
+      const punchMesh = new THREE.Mesh(punchGeo, orangeDieMat);
+      punchMesh.position.y = -upperDieH - 0.05;
+      slideAssembly.add(punchMesh);
+
+      const rodDiameter = 0.65;
+      const rodLength = 2.4;
+      const centerPistonRod = new THREE.Mesh(
+        new THREE.CylinderGeometry(rodDiameter / 2, rodDiameter / 2, rodLength, 32),
+        chromeRodMat
+      );
+      centerPistonRod.position.set(0, ramH + rodLength / 2, 0);
+      centerPistonRod.castShadow = true;
+      slideAssembly.add(centerPistonRod);
+
+      const baseY = winBottom + windowH * 0.58;
+      slideAssembly.position.set(0, baseY, 0);
+      group.add(slideAssembly);
+
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, 0.05, depth * 0.95), steelMat);
+      rail.position.y = height + 0.7;
+      group.add(rail);
+
+      scene.add(group);
+      createTwoHandStation(xPos, zPos + depth / 2 + 0.6);
+
+      return { group, slideAssembly, needlePivot, baseY, stroke };
+    }
+
+    // ==========================================
+    // [B] 후면 라인: 650톤 6대
+    // ==========================================
+    const rearZ = -5.0;
+    const pressCount = 6;
+    const pressPitch = 6.4;
+    const pW = 3.2, pH = 6.6, pD = 2.8, pWinH = 2.2, pStroke = 0.85;
+
+    const pressXList = [];
+    for (let i = 0; i < pressCount; i++) {
+      pressXList.push(-16.0 + i * pressPitch);
+    }
+
+    const pressUnits = pressXList.map((x) => 
+      buildHimPressUnit({ 
+        xPos: x, zPos: rearZ, width: pW, height: pH, depth: pD, windowH: pWinH, stroke: pStroke, 
+        tonText: 'HKLP-650', is400T: false 
+      })
+    );
+
+    // 3단 아이들
+    for (let i = 0; i < pressCount - 1; i++) {
+      const leftX = pressXList[i];
+      const rightX = pressXList[i + 1];
+      const step = (rightX - leftX) / 4;
+      for (let k = 1; k <= 3; k++) {
+        const idleX = leftX + step * k;
+        const idleStand = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.2, 0.35), darkMat);
+        idleStand.position.set(idleX, 0.6, rearZ);
+        scene.add(idleStand);
+
+        const idlePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 24), steelMat);
+        idlePlate.position.set(idleX, 1.23, rearZ);
+        scene.add(idlePlate);
+      }
+    }
+
+    // 디스테커 본체
+    const destackerX = pressXList[pressCount - 1] + 4.8;
+    const destackerGroup = new THREE.Group();
+    destackerGroup.position.set(destackerX, 0, rearZ);
+
+    const dBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 2.2), darkMat);
+    dBase.position.y = 0.2;
+    destackerGroup.add(dBase);
+
+    const dTower = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.6, 0.2), ktmArmMat);
+    dTower.position.set(0, 1.4, 0.9);
+    destackerGroup.add(dTower);
+
+    const dArm = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 0.3), steelMat);
+    dArm.position.set(0, 2.6, 0.4);
+    destackerGroup.add(dArm);
+    scene.add(destackerGroup);
+
+    // ========================================================
+    // ★ [핵심 정정] 디스테커 조작 판넬: 
+    // 1호기 기둥 전면 바닥(18.0, -4.0)에 배치하고, 
+    // 화면이 작업자/취출부(주황색 컨베이어 쪽)를 정면으로 바라보도록 rotY = Math.PI / 2 적용
+    // ========================================================
+    createTouchControlConsole(18.0, -4.0, Math.PI / 2, 'FEEDER PANEL');
+
+    // 1호기 투입 컨베이어 및 3개 피딩 블랭크
+    const inFeedConveyorLen = 4.2;
+    const inFeedConveyorMidX = (pressXList[pressCount - 1] + destackerX) / 2;
+    const inFeedConveyor = new THREE.Mesh(
+      new THREE.BoxGeometry(inFeedConveyorLen, 0.3, 1.2), 
+      yellowConveyorMat
+    );
+    inFeedConveyor.position.set(inFeedConveyorMidX, 0.9, rearZ);
+    scene.add(inFeedConveyor);
+
+    const inFeedBlanks = [];
+    const inFeedBlankGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.035, 32);
+    for (let i = 0; i < 3; i++) {
+      const b = new THREE.Mesh(inFeedBlankGeo, steelMat);
+      const posX = (destackerX - 0.6) - (i * (inFeedConveyorLen / 3.2));
+      b.position.set(posX, 1.08, rearZ);
+      b.castShadow = true;
+      scene.add(b);
+      inFeedBlanks.push(b);
+    }
+
+    // 6호기 취출 컨베이어 & 작업자
+    const press6X = pressXList[0];
+    const conveyorLen = 7.0;
+    const conveyorZ = rearZ + (pD / 2) + (conveyorLen / 2) + 0.2;
+
+    const outConveyor = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, conveyorLen), yellowConveyorMat);
+    outConveyor.position.set(press6X, 0.6, conveyorZ);
+    scene.add(outConveyor);
+
+    const conveyorProducts = [];
+    for (let p = 0; p < 5; p++) {
+      const hubMesh = createBrakeHubDiscMesh();
+      hubMesh.position.set(press6X, 0.8, conveyorZ - (conveyorLen / 2) + (p * 1.35));
+      scene.add(hubMesh);
+      conveyorProducts.push(hubMesh);
+    }
+
+    // 취출부 블루 메쉬 스틸 파레트
+    const palletStationZ = conveyorZ + (conveyorLen / 2) + 1.2;
+    const activeLoadingPallet = createBlueMeshPallet();
+    activeLoadingPallet.position.set(press6X, 0, palletStationZ);
+    scene.add(activeLoadingPallet);
+
+    for (let dx of [-0.28, 0.28]) {
+      for (let dz of [-0.25, 0.25]) {
+        const pHub = createBrakeHubDiscMesh();
+        pHub.position.set(press6X + dx, 0.12, palletStationZ + dz);
+        scene.add(pHub);
+      }
+    }
+
+    function createWorker(x, z, rotY) {
+      const wGroup = new THREE.Group();
+      wGroup.position.set(x, 0, z);
+      wGroup.rotation.y = rotY;
+
+      const legGeo = new THREE.BoxGeometry(0.18, 0.75, 0.2);
+      const legL = new THREE.Mesh(legGeo, darkMat); legL.position.set(-0.12, 0.375, 0);
+      const legR = new THREE.Mesh(legGeo, darkMat); legR.position.set(0.12, 0.375, 0);
+      wGroup.add(legL, legR);
+
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.65, 0.28), new THREE.MeshStandardMaterial({ color: 0x2563eb }));
+      torso.position.y = 1.075;
+      wGroup.add(torso);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffd1b3 }));
+      head.position.y = 1.55;
+      wGroup.add(head);
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 16), darkMat);
+      cap.position.y = 1.68;
+      wGroup.add(cap);
+
+      scene.add(wGroup);
+      return wGroup;
+    }
+    createWorker(press6X - 1.2, palletStationZ - 0.5, Math.PI / 3);
+    createWorker(press6X + 1.2, palletStationZ - 0.5, -Math.PI / 3);
+
+    // 지게차 시스템 (경광등 장착)
+    const forkliftSystem = new THREE.Group();
+
+    const forkliftUnit = createForkliftUnit();
+    forkliftSystem.add(forkliftUnit);
+
+    const carriedPallet = createBlueMeshPallet();
+    carriedPallet.position.set(0, 0.22, -1.8);
+    forkliftSystem.add(carriedPallet);
+
+    for (let dx of [-0.28, 0.28]) {
+      for (let dz of [-0.25, 0.25]) {
+        const cHub = createBrakeHubDiscMesh();
+        cHub.position.set(dx, 0.34, -1.8 + dz);
+        forkliftSystem.add(cHub);
+      }
+    }
+
+    const forkInitX = press6X - 4.5;
+    const forkInitZ = palletStationZ + 1.0;
+    forkliftSystem.position.set(forkInitX, 0, forkInitZ);
+    forkliftSystem.rotation.y = -Math.PI / 2;
+    scene.add(forkliftSystem);
+
+    // ==========================================
+    // [C] 전면 라인: KTM 나이테 코일 & 400T 프레스
+    // ==========================================
+    const frontZ = 4.5;
+
+    const ktmSystem = new THREE.Group();
+    ktmSystem.position.set(4.0, 0, frontZ);
+
+    const towerFrame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.2, 2.0), himWhiteMat);
+    towerFrame.position.set(-2.4, 2.1, 0);
+    ktmSystem.add(towerFrame);
+
+    const holdArmGroup = new THREE.Group();
+    holdArmGroup.position.set(-2.4, 3.8, 0);
+    const holdArmBar = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 0.35), ktmArmMat);
+    holdArmBar.position.set(1.0, -0.6, 0);
+    holdArmBar.rotation.z = -Math.PI / 6;
+    holdArmGroup.add(holdArmBar);
+    ktmSystem.add(holdArmGroup);
+
+    const coilMaterials = [coilOuterMat, coilCapMat, coilCapMat];
+    const coilGeo = new THREE.CylinderGeometry(1.5, 1.5, 1.1, 48);
+    const mainCoil = new THREE.Mesh(coilGeo, coilMaterials);
+    mainCoil.rotation.x = Math.PI / 2;
+    mainCoil.position.set(-0.6, 2.2, 0);
+    mainCoil.castShadow = true;
+    ktmSystem.add(mainCoil);
+
+    const feederCabinet = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, 1.8), himWhiteMat);
+    feederCabinet.position.set(2.2, 1.1, 0);
+    ktmSystem.add(feederCabinet);
+
+    const stripPlate = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.04, 0.9), steelMat);
+    stripPlate.position.set(4.8, 1.25, 0);
+    ktmSystem.add(stripPlate);
+    scene.add(ktmSystem);
+
+    // 400톤 프레스
+    const p400X = 12.0;
+    const press400T = buildHimPressUnit({ 
+      xPos: p400X, 
+      zPos: frontZ, 
+      width: 3.4, 
+      height: 6.4, 
+      depth: 3.0, 
+      windowH: 2.0, 
+      stroke: 0.8, 
+      tonText: 'HKLP-400', 
+      is400T: true 
+    });
+
+    const railLoadedX = destackerX + 1.2;
+    const railEmptyX = destackerX - 1.2;
+    const press400TRightX = p400X + (3.4 / 2);
+    const crossConveyorLen = railLoadedX - press400TRightX;
+    const crossConveyorMidX = (press400TRightX + railLoadedX) / 2;
+
+    const blankExitConveyor = new THREE.Mesh(new THREE.BoxGeometry(crossConveyorLen, 0.25, 1.1), yellowConveyorMat);
+    blankExitConveyor.position.set(crossConveyorMidX, 1.05, frontZ);
+    scene.add(blankExitConveyor);
+
+    for (let cx of [press400TRightX + 1.5, crossConveyorMidX, railLoadedX - 1.5]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 1.1), darkMat);
+      leg.position.set(cx, 0.45, frontZ);
+      scene.add(leg);
+    }
+
+    const exitParts = [];
+    const exitPartGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.04, 32);
+    for (let i = 0; i < 3; i++) {
+      const part = new THREE.Mesh(exitPartGeo, steelMat);
+      part.position.set(press400TRightX + (i * (crossConveyorLen / 3)), 1.2, frontZ);
+      scene.add(part);
+      exitParts.push(part);
+    }
+
+    // 400T 조작반
+    createTouchControlConsole(
+      p400X + 2.4, 
+      frontZ + 1.6, 
+      0, 
+      '400T OP PANEL'
+    );
+
+    // ========================================================
+    // ★ 400T 실린더 푸셔 & 650T 엘리베이터
+    // ========================================================
+    const railZ_Start = frontZ + 1.5;
+    const railZ_End = rearZ - 1.5;
+    const railTotalLen = Math.abs(railZ_Start - railZ_End);
+    const railCenterZ = (railZ_Start + railZ_End) / 2;
+
+    const loadedRailBed = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.15, railTotalLen), yellowConveyorMat);
+    loadedRailBed.position.set(railLoadedX, 0.08, railCenterZ);
+    scene.add(loadedRailBed);
+
+    const emptyRailBed = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.15, railTotalLen), orangeRailMat);
+    emptyRailBed.position.set(railEmptyX, 0.08, railCenterZ);
+    scene.add(emptyRailBed);
+
+    // 중앙 레일 조작반
+    createTouchControlConsole(railEmptyX - 1.6, railCenterZ, -Math.PI / 2, 'SYNC MASTER');
+
+    // 1) 400톤 쪽: 횡방향 유압 실린더 푸셔
+    const pusherGroup = new THREE.Group();
+    pusherGroup.position.set(railEmptyX - 1.4, 0.25, railZ_Start);
+
+    const cylBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.35), darkMat);
+    pusherGroup.add(cylBody);
+
+    const cylRod = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 16), chromeRodMat);
+    cylRod.rotation.z = Math.PI / 2;
+    cylRod.position.x = 1.2;
+    pusherGroup.add(cylRod);
+
+    const pusherHead = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 1.2), orangeRailMat);
+    pusherHead.position.x = 2.4;
+    pusherGroup.add(pusherHead);
+
+    scene.add(pusherGroup);
+
+    // 2) 650톤 쪽: 수직 엘리베이터 승하강 리프터
+    const elevatorGroup = new THREE.Group();
+    elevatorGroup.position.set(railLoadedX, 0, railZ_End);
+
+    for (let ex of [-0.6, 0.6]) {
+      for (let ez of [-0.6, 0.6]) {
+        const ePost = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 0.08), steelMat);
+        ePost.position.set(ex, 1.1, ez);
+        elevatorGroup.add(ePost);
+      }
+    }
+
+    const elevatorTable = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 1.3), yellowConveyorMat);
+    elevatorTable.position.y = 0.85;
+    elevatorGroup.add(elevatorTable);
+
+    scene.add(elevatorGroup);
+
+    // 매거진 카트 팩토리
+    function createMagazineCart(isFull) {
+      const cGroup = new THREE.Group();
+
+      const cartBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 1.2), steelMat);
+      cartBase.position.y = 0.18;
+      cGroup.add(cartBase);
+
+      for (let px of [-0.4, 0.4]) {
+        for (let pz of [-0.4, 0.4]) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 16), steelMat);
+          post.position.set(px, 0.75, pz);
+          cGroup.add(post);
+        }
+      }
+
+      if (isFull) {
+        const stackMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.48, 0.48, 0.9, 32),
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.25 })
+        );
+        stackMesh.position.y = 0.65;
+        cGroup.add(stackMesh);
+      }
+
+      scene.add(cGroup);
+      return cGroup;
+    }
+
+    const fullCarts = [];
+    const cartSpacing = railTotalLen / 5;
+    for (let i = 0; i < 5; i++) {
+      const cart = createMagazineCart(true);
+      const initZ = railZ_Start - (i * cartSpacing);
+      cart.position.set(railLoadedX, 0, initZ);
+      fullCarts.push({ group: cart, z: initZ });
+    }
+
+    const emptyCarts = [];
+    for (let i = 0; i < 5; i++) {
+      const cart = createMagazineCart(false);
+      const initZ = railZ_End + (i * cartSpacing);
+      cart.position.set(railEmptyX, 0, initZ);
+      emptyCarts.push({ group: cart, z: initZ });
+    }
+
+    // ==========================================
+    // [E] 트랜스퍼 바 & 워크피스
+    // ==========================================
+    const allRearStations = [destackerX];
+    for (let i = pressCount - 1; i >= 0; i--) {
+      allRearStations.push(pressXList[i]);
+      if (i > 0) {
+        const leftX = pressXList[i - 1];
+        const rightX = pressXList[i];
+        const step = (rightX - leftX) / 4;
+        allRearStations.push(rightX - step * 1);
+        allRearStations.push(rightX - step * 2);
+        allRearStations.push(rightX - step * 3);
+      }
+    }
+
+    const tBarGroup = new THREE.Group();
+    const tBarLength = Math.abs(pressXList[0] - destackerX) + 3;
+    const tBarMidX = (pressXList[0] + destackerX) / 2;
+
+    const barF = new THREE.Mesh(new THREE.BoxGeometry(tBarLength, 0.08, 0.08), steelMat);
+    barF.position.set(tBarMidX, 1.45, rearZ + 0.8);
+    const barR = new THREE.Mesh(new THREE.BoxGeometry(tBarLength, 0.08, 0.08), steelMat);
+    barR.position.set(tBarMidX, 1.45, rearZ - 0.8);
+    tBarGroup.add(barF, barR);
+    scene.add(tBarGroup);
+
+    const rearWorkpieces = [];
+    const wpGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.03, 32);
+    allRearStations.forEach(posX => {
+      const wp = new THREE.Mesh(wpGeo, steelMat);
+      wp.position.set(posX, 1.35, rearZ);
+      scene.add(wp);
+      rearWorkpieces.push(wp);
+    });
+
+    // ==========================================
+    // [F] 실시간 애니메이션 루프
+    // ==========================================
+    let isRunning = true;
+    let transferSPM = 18;
+    let blankingSPM = 24;
+    let transferCycle = 0;
+    let blankingCycle = 0;
+    let forkliftCycle = 0;
+    let mechanismTime = 0;
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // 400T 스마트 투명화
+      const camDistTo400T = camera.position.distanceTo(new THREE.Vector3(p400X, 3.0, frontZ));
+      if (camDistTo400T < 22 && camera.position.z > frontZ) {
+        press400TBodyMat.opacity = THREE.MathUtils.lerp(press400TBodyMat.opacity, 0.25, 0.1);
+        press400TBodyMat.depthWrite = false;
+      } else {
+        press400TBodyMat.opacity = THREE.MathUtils.lerp(press400TBodyMat.opacity, 1.0, 0.1);
+        press400TBodyMat.depthWrite = true;
+      }
+
+      if (isRunning) {
+        mechanismTime += delta;
+
+        // 지게차 비콘 회전 점멸
+        if (flBeaconLight) {
+          flBeaconLight.intensity = 1.5 + Math.sin(mechanismTime * 12.0) * 1.5;
+        }
+
+        // (1) 650톤 6대 트랜스퍼 연동
+        transferCycle = (transferCycle + delta * (transferSPM / 60)) % 1.0;
+        const crankDeg = transferCycle * 360;
+        const rad = (crankDeg * Math.PI) / 180;
+
+        pressUnits.forEach(p => {
+          p.needlePivot.rotation.z = -rad;
+          const disp = -(Math.cos(rad) - 1) / 2 * p.stroke;
+          p.slideAssembly.position.y = p.baseY - disp;
+        });
+
+        let feedProg = 0;
+        const feedStart = 0.65, feedEnd = 0.95;
+        if (transferCycle >= feedStart && transferCycle < feedEnd) {
+          feedProg = (transferCycle - feedStart) / (feedEnd - feedStart);
+        }
+        const stepPitch = pressPitch / 4;
+        tBarGroup.position.x = -feedProg * stepPitch;
+
+        rearWorkpieces.forEach((wp, idx) => {
+          const startX = allRearStations[idx];
+          if (feedProg > 0) {
+            wp.position.x = startX - (feedProg * stepPitch);
+            wp.position.y = 1.35 + Math.sin(feedProg * Math.PI) * 0.12;
+          } else {
+            wp.position.x = startX;
+            wp.position.y = 1.35;
+          }
+        });
+
+        // 1호기 투입 컨베이어 3개 피딩
+        inFeedBlanks.forEach((b, i) => {
+          const initX = (destackerX - 0.6) - (i * (inFeedConveyorLen / 3.2));
+          if (feedProg > 0) {
+            b.position.x = initX - (feedProg * (inFeedConveyorLen / 3.2));
+          } else {
+            b.position.x = initX;
+          }
+        });
+
+        // (2) 400톤 블랭킹 프레스 타발
+        blankingCycle = (blankingCycle + delta * (blankingSPM / 60)) % 1.0;
+        const bRad = blankingCycle * Math.PI * 2;
+        press400T.needlePivot.rotation.z = -bRad;
+        const bDisp = -(Math.cos(bRad) - 1) / 2 * press400T.stroke;
+        press400T.slideAssembly.position.y = press400T.baseY - bDisp;
+
+        mainCoil.rotation.y += delta * 1.8;
+
+        // 400T 배출 컨베이어 제품 흐름
+        const exitSpeed = delta * 2.2;
+        exitParts.forEach(part => {
+          part.position.x += exitSpeed;
+          if (part.position.x > railLoadedX) {
+            part.position.x = press400TRightX;
+          }
+        });
+
+        // 6호기 취출 컨베이어 제품 이송
+        conveyorProducts.forEach((prod) => {
+          prod.position.z += delta * 1.5;
+          if (prod.position.z > (conveyorZ + conveyorLen / 2)) {
+            prod.position.z = conveyorZ - conveyorLen / 2;
+          }
+        });
+
+        // (3) 2열 매거진 레일 순환
+        const railMoveSpeed = delta * 0.45;
+        fullCarts.forEach(c => {
+          c.z -= railMoveSpeed;
+          if (c.z < railZ_End) c.z = railZ_Start;
+          c.group.position.set(railLoadedX, 0, c.z);
+        });
+
+        emptyCarts.forEach(c => {
+          c.z += railMoveSpeed;
+          if (c.z > railZ_Start) c.z = railZ_End;
+          c.group.position.set(railEmptyX, 0, c.z);
+        });
+
+        // 400T 실린더 푸셔 & 650T 엘리베이터 승하강
+        const pushCycle = (mechanismTime % 6.0) / 6.0;
+        if (pushCycle < 0.4) {
+          const pProg = pushCycle / 0.4;
+          pusherGroup.position.x = (railEmptyX - 1.4) + Math.sin(pProg * Math.PI) * 1.6;
+        } else {
+          pusherGroup.position.x = railEmptyX - 1.4;
+        }
+
+        const liftCycle = ((mechanismTime + 3.0) % 6.0) / 6.0;
+        if (liftCycle < 0.5) {
+          const lProg = liftCycle / 0.5;
+          elevatorTable.position.y = 0.85 - Math.sin(lProg * Math.PI) * 0.65;
+        } else {
+          elevatorTable.position.y = 0.85;
+        }
+
+        // (4) 지게차 180도 반전 상태 안전 후진 인출
+        forkliftCycle = (forkliftCycle + delta) % 14.0;
+        if (forkliftCycle < 7.0) {
+          const revProgress = forkliftCycle / 7.0;
+          forkliftSystem.position.x = forkInitX - (revProgress * 7.5);
+          forkliftSystem.position.z = forkInitZ + (revProgress * 0.8);
+        } else {
+          const fwdProgress = (forkliftCycle - 7.0) / 7.0;
+          forkliftSystem.position.x = (forkInitX - 7.5) + (fwdProgress * 7.5);
+          forkliftSystem.position.z = (forkInitZ + 0.8) - (fwdProgress * 0.8);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // 프리셋 카메라 뷰 전환 함수
+    function smoothMoveCamera(tx, ty, tz, lx, ly, lz) {
+      const startPos = camera.position.clone();
+      const endPos = new THREE.Vector3(tx, ty, tz);
+      const startTarget = controls.target.clone();
+      const endTarget = new THREE.Vector3(lx, ly, lz);
+
+      let t = 0;
+      function step() {
+        t += 0.05;
+        camera.position.lerpVectors(startPos, endPos, t);
+        controls.target.lerpVectors(startTarget, endTarget, t);
+        controls.update();
+        if (t < 1.0) requestAnimationFrame(step);
+      }
+      step();
+    }
+
+    document.getElementById('btn-view-all').addEventListener('click', () => {
+      smoothMoveCamera(22, 26, 44, 2, 2.5, 0);
+    });
+
+    document.getElementById('btn-view-feeder').addEventListener('click', () => {
+      // 판넬 화면(LCD)을 정면에서 똑바로 마주보는 카메라 뷰
+      smoothMoveCamera(16.0, 2.2, -4.0, 18.0, 1.2, -4.0);
+    });
+
+    document.getElementById('btn-view-forklift').addEventListener('click', () => {
+      smoothMoveCamera(press6X - 7.0, 4.0, palletStationZ + 4.5, press6X - 2.5, 1.2, palletStationZ);
+    });
+
+    // UI 이벤트 바인딩
+    const toggleBtn = document.getElementById('toggle-btn');
+    const transferStatus = document.getElementById('transfer-status');
+    const blankStatus = document.getElementById('blank-status');
+
+    toggleBtn.addEventListener('click', () => {
+      isRunning = !isRunning;
+      if (isRunning) {
+        toggleBtn.textContent = '전 라인 일시정지';
+        transferStatus.textContent = '650T 6대 동기 가동';
+        transferStatus.className = 'badge badge-run';
+        blankStatus.textContent = '400T 연속 타발 중';
+        blankStatus.className = 'badge badge-run';
+      } else {
+        toggleBtn.textContent = '전 라인 재가동';
+        transferStatus.textContent = '라인 정지';
+        transferStatus.className = 'badge badge-stop';
+        blankStatus.textContent = '타발 정지';
+        blankStatus.className = 'badge badge-stop';
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 </body>
 </html>
